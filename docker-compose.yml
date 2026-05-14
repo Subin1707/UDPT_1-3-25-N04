@@ -1,0 +1,91 @@
+version: "3.9"
+
+services:
+
+  # =========================
+  # RabbitMQ
+  # =========================
+  rabbitmq:
+    image: rabbitmq:3-management
+
+    container_name: shopee_rabbitmq
+
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+    restart: always
+
+
+  # =========================
+  # Redis
+  # =========================
+  redis:
+    image: redis:latest
+
+    container_name: shopee_redis
+
+    ports:
+      - "6379:6379"
+
+    restart: always
+
+
+  # =========================
+  # FastAPI App
+  # =========================
+  api:
+    build: .
+
+    container_name: shopee_api
+
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - .:/app
+
+    depends_on:
+      - rabbitmq
+      - redis
+
+    restart: always
+
+
+  # =========================
+  # Worker Service
+  # =========================
+  worker:
+    build: .
+
+    container_name: shopee_worker
+
+    command: python -m app.worker
+
+    depends_on:
+      - rabbitmq
+      - redis
+
+    restart: always
+
+
+  # =========================
+  # Subscriber Service
+  # =========================
+  subscriber:
+    build: .
+
+    container_name: shopee_subscriber
+
+    command: python -m app.subscriber
+
+    depends_on:
+      - redis
+
+    restart: always
